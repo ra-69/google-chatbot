@@ -1,0 +1,31 @@
+{
+  "name": "google-chatbot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "lint": "eslint src/**/*.ts",
+    "build": "tsc",
+    "dev": "npm run build && npx @google-cloud/functions-framework --target=chatBot",
+    "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --region==us-central1 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated",
+    "ngrok": "ngrok http 8080",
+    "ngrok:andrei": "ngrok http 8080 --url https://kingfish-literate-poodle.ngrok-free.app"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google-apps/chat": "^0.11.0",
+    "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/functions-framework": "^3.4.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.7",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}
