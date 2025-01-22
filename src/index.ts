@@ -1,21 +1,25 @@
 import { Request, Response } from "@google-cloud/functions-framework";
+import { ChatEvent } from "./types/event";
+import { ChatResponse } from "./types/respose";
+
+import { handleAddedToSpaceEvent } from "./services/space";
+import { handleCommand } from "./services/command";
 
 export async function chatBot(req: Request, res: Response) {
-    if (req.method === 'POST') {
-        let text = '';
-
-        if (req.body.type === 'ADDED_TO_SPACE' && req.body.space.type === 'ROOM') {
-            // Case 1: When App was added to the ROOM
-            text = `Thanks for adding me to ${req.body.space.displayName}`;
-        } else if (req.body.type === 'ADDED_TO_SPACE' &&
-            // Case 2: When App was added to a DM
-            req.body.space.type === 'DM') {
-            text = `Thanks for adding me to a DM, ${req.body.user.displayName}`;
-        } else if (req.body.type === 'MESSAGE') {
-            // Case 3: Texting the App
-            text = `Your message : ${req.body.message.text}`;
-        }
-        return res.json({text});
-    }
+  if (req.method !== 'POST') {
     res.send(`Hello, World`);
+  }
+
+  const event = req.body as ChatEvent;
+  let resp: ChatResponse = { text: 'Hello, World' };
+  switch (event.type) {
+    case 'ADDED_TO_SPACE':
+      resp = await handleAddedToSpaceEvent(event);
+      return res.json(resp);
+    case 'MESSAGE':
+      resp = await handleCommand(event);
+      return res.json(resp);
+    default:
+      return res.json(resp);
+  }
 }
