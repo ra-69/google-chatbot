@@ -7,7 +7,7 @@
     "lint": "eslint src/**/*.ts",
     "build": "tsc",
     "dev": "npm run build && npx @google-cloud/functions-framework --target=chatBot",
-    "start": "functions-framework --target=chatBot",
+    "dev:debug": "functions-framework --target=chatBot",
     "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated",
     "ngrok": "ngrok http 8080",
     "ngrok:andrei": "ngrok http 8080 --url https://kingfish-literate-poodle.ngrok-free.app"

@@ -1,14 +1,15 @@
 import { AddedToSpaceEvent } from "../types/event";
 import { TextResponse } from "../types/respose";
-import { getEntity, setEntity } from "./database";
+import { getRef } from "./database";
 
 export async function handleAddedToSpaceEvent(event: AddedToSpaceEvent): Promise<TextResponse> {
   if (event.space.type === 'DM') {
     const { user } = event;
-    const userRecord = await getEntity('users', user.email);
+    const ref = getRef('users');
+    const userRecord = (await ref.doc(user.email).get()).data();
 
     if (!userRecord) {
-      await setEntity('users', user.email, user);
+      await ref.doc(user.email).set(user);
     }
 
     return { text: `Thanks for adding me to a DM, ${event.user.displayName}`};

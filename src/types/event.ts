@@ -61,5 +61,5 @@ export type Message = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#slashcommand */
 export type SlashCommand = {
-  commandId: "1"
+  commandId: "1" | "2" | "3";
 }
