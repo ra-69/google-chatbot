@@ -99,7 +99,7 @@ export async function getReport(flow: FlowType, userIds: string[]): Promise<Text
         return `*${name}*\n${steps[step] ? steps[step] : "No reply"}`;
       });
 
-      return `\`${createdAt}\`\n${report.join("\n")}`;
+      return `_${createdAt}_\n${report.join("\n")}`;
     });
 
     return `*${userId}*\n${report.join("\n")}`;
