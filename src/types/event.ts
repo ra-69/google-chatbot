@@ -1,5 +1,5 @@
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event */
-export type ChatEvent = MessageEvent | RemovedFromSpaceEvent | AddedToSpaceEvent;
+export type ChatEvent = MessageEvent | RemovedFromSpaceEvent | AddedToSpaceEvent | CardClickedEvent;
 
 export type EventContext = {
   eventTime: string;
@@ -18,6 +18,11 @@ export type RemovedFromSpaceEvent = {
 
 export type AddedToSpaceEvent = {
   type: "ADDED_TO_SPACE";
+} & EventContext;
+
+export type CardClickedEvent = {
+  type: "CARD_CLICKED";
+  common: CommonEventObject;
 } & EventContext;
 
 
@@ -62,4 +67,26 @@ export type Message = {
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#slashcommand */
 export type SlashCommand = {
   commandId: "1" | "2" | "3";
+}
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event#commoneventobject */
+export type CommonEventObject = {
+  formInputs: {
+    [widgetName: string]: Inputs;
+  }
+}
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event#inputs */
+export type Inputs = DateInput | StringInputs;
+
+export type DateInput = {
+  dateInput: {
+    msSinceEpoch: string;
+  }
+}
+
+export type StringInputs = {
+  stringInputs: {
+    value: string[];
+  }
 }

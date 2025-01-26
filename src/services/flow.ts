@@ -1,7 +1,8 @@
 import { config } from "../config/flow";
 import { MessageEvent } from "../types/event";
-import { FlowStep, FlowType } from "../types/flow";
+import { FlowStep, FlowType, ReportFilter } from "../types/flow";
 import { TextResponse } from "../types/respose";
+import { getTimestamp, toDate } from "../utils/time";
 import { getRef } from "./database";
 
 export async function startFlow(flow: FlowType, event: MessageEvent): Promise<TextResponse> {
@@ -10,7 +11,7 @@ export async function startFlow(flow: FlowType, event: MessageEvent): Promise<Te
     userId,
     activeFlow: flow,
     currentStep: 0,
-    createdAt: new Date().toUTCString(),
+    createdAt: getTimestamp(new Date().getTime()),
   });
 
   const def = config[flow];
@@ -43,7 +44,7 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
     userId,
     type: activeFlow,
     step: def[currentStep].step,
-    reply: event.message.text,
+    reply: event.message.formattedText,
     createdAt
   });
 
@@ -63,7 +64,7 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
   return { text: def[currentStep + 1].prompt };
 }
 
-export async function getReport(flow: FlowType, userIds: string[]): Promise<TextResponse> {
+export async function getReport(flow: FlowType, { userIds, from, to }: ReportFilter): Promise<TextResponse> {
 
   const map: { [userId: string]: {
     [createdAt: string]: {
@@ -73,8 +74,14 @@ export async function getReport(flow: FlowType, userIds: string[]): Promise<Text
 
   const reports = await getRef("reports")
     .where("type", "==", flow)
+    .where("createdAt", ">=", from)
+    .where("createdAt", "<=", to)
     .where("userId", "in", userIds)
     .get();
+
+  if (reports.empty) {
+    return { text : "No reports found" };
+  }
 
   reports.docs.forEach(doc => {
     const {reply, userId, step, createdAt } = doc.data();
@@ -99,7 +106,7 @@ export async function getReport(flow: FlowType, userIds: string[]): Promise<Text
         return `*${name}*\n${steps[step] ? steps[step] : "No reply"}`;
       });
 
-      return `_${createdAt}_\n${report.join("\n")}`;
+      return `_${toDate(parseInt(createdAt)).toUTCString()}_\n${report.join("\n")}`;
     });
 
     return `*${userId}*\n${report.join("\n")}`;

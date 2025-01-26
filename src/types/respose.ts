@@ -1,9 +1,18 @@
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#resource:-message */
-export type ChatResponse = { actionResponse: ActionResponse } | TextResponse;
+export type ChatResponse = { actionResponse: ActionResponse } | TextResponse | CardsResponse;
 
 export type TextResponse = {
   text: string; 
+};
+
+export type CardsResponse = {
+  cardsV2: CardV2[];
+};
+
+export type CardV2 = {
+  cardId: string;
+  card: Card;
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#actionresponse */
@@ -24,16 +33,17 @@ export type Dialog = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.Card_1 */ 
 export type Card = {
-  header: CardHeader;
+  header?: CardHeader;
   fixedFooter?: CardFixedFooter;
-  sections: Section[];
+  sections?: Section[];
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.CardHeader */
 export type CardHeader = {
   title: string;
-  subtitle: string;
-  imageUrl: string;
+  subtitle?: string;
+  imageUrl?: string;
+  imageType?: "CIRCLE" | "SQUARE";
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.CardFixedFooter */
@@ -63,12 +73,12 @@ export type Color = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#section */
 export type Section = {
-  header: string;
+  header?: string;
   widgets: Widget[];
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#widget */
-export type Widget = { textInput: TextInput };
+export type Widget = { textInput: TextInput } | { decoratedText: DecoratedText } | { dateTimePicker: DateTimePicker } | { selectionInput: SelectionInput} | { buttonList: ButtonList };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#textinput */
 export type TextInput = {
@@ -80,6 +90,32 @@ export type TextInput = {
     type: "SINGLE_LINE" | "MULTIPLE_LINE";
 }
 
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#decoratedtext */
+export type DecoratedText = {
+  icon?: Icon;
+  startIcon?: Icon;
+  topLabel?: string;
+  text: string;
+  bottomLabel?: string;
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#icon */
+export type Icon = {
+  altText?: string;
+  imageType?: "SQUARE" | "CIRCLE";
+  knownIcon?: string;
+  iconUrl?: string;
+  materialIcon?: MaterialIcon;
+}
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#materialicon */
+export type MaterialIcon = {
+  name: string;
+  fill: boolean;
+  weight: number;
+  grade: number;
+}
+
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.CardAction */
 export type CardAction = {
   actionLabel: string;
@@ -89,3 +125,50 @@ export type CardAction = {
     }
   }
 };
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#datetimepicker */
+export type DateTimePicker = {
+  name: string;
+  label: string;
+  type: "DATE_AND_TIME" | "DATE_ONLY" | "TIME_ONLY";
+  valueMsEpoch?: string;
+  timezoneOffsetMs?: string;
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#selectioninput */
+export type SelectionInput = {
+  name: string;
+  label?: string;
+  type: "CHECK_BOX" | "RADIO_BUTTON" | "SWITCH";
+  items: SelectionItem[];
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#selectionitem */
+export type SelectionItem = {
+  text: string;
+  value: string;
+  selected: boolean;
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#buttonlist */
+export type ButtonList = {
+  buttons: [
+    Button
+  ]
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#button */
+export type Button = {
+  text: string;
+  onClick: OnClick;
+}
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#onclick */
+export type OnClick = {
+  action: Action;
+}
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#action */
+export type Action = {
+  function: string;
+}

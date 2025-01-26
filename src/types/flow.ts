@@ -2,7 +2,7 @@ export type StatusReport = {
   type: "STATUS_REPORT";
   step: "DONE" | "IN_PROGRESS" | "BLOCKERS";
   reply: string;
-  createdAt: string
+  createdAt: number;
 }
 
 export type Flow = StatusReport;
@@ -24,5 +24,11 @@ export type FlowState = {
   userId: string;
   activeFlow: FlowType;
   currentStep: number;
-  createdAt: string;
+  createdAt: number;
 };
+
+export type ReportFilter = {
+  userIds: string[];
+  from: number;
+  to: number;
+}
