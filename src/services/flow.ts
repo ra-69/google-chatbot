@@ -4,24 +4,44 @@ import { FlowStep, FlowType, ReportFilter } from "../types/flow";
 import { TextResponse } from "../types/respose";
 import { getTimestamp, toDate } from "../utils/time";
 import { getRef } from "./database";
+import { sendMessage } from "./message";
+import { getUsersMap } from "./users";
 
-export async function startFlow(flow: FlowType, event: MessageEvent): Promise<TextResponse> {
-  const userId = event.user.email;
-  await getRef('flows').doc(userId).set({
-    userId,
-    activeFlow: flow,
-    currentStep: 0,
-    createdAt: getTimestamp(new Date().getTime()),
-  });
+export async function startFlow(
+  flow: FlowType,
+  userId: string,
+): Promise<TextResponse> {
+  await getRef("flows")
+    .doc(userId)
+    .set({
+      userId,
+      activeFlow: flow,
+      currentStep: 0,
+      createdAt: getTimestamp(new Date().getTime()),
+    });
 
   const def = config[flow];
 
   if (def.length === 0) {
-    return { text: 'Invalid configuration' };
+    return { text: "Invalid configuration" };
   }
 
   const { prompt: text } = def[0];
   return { text };
+}
+
+export async function finishFlow(
+  userId: string,
+  message = "Unfortunately the time assigned to fill the report is elapsed.",
+): Promise<void> {
+  const current = (await getRef("flows").doc(userId).get()).data();
+
+  if (current) {
+    sendMessage({
+      text: message,
+      userId,
+    });
+  }
 }
 
 export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
@@ -45,7 +65,7 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
     type: activeFlow,
     step: def[currentStep].step,
     reply: event.message.formattedText,
-    createdAt
+    createdAt,
   });
 
   if (currentStep >= def.length - 1) {
@@ -54,37 +74,46 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
     return { text: "Thank you. Have a wonderful day!" };
   }
 
-  await getRef("flows").doc(userId).set({
-    userId,
-    activeFlow,
-    currentStep: currentStep + 1,
-    createdAt
-  });
+  await getRef("flows")
+    .doc(userId)
+    .set({
+      userId,
+      activeFlow,
+      currentStep: currentStep + 1,
+      createdAt,
+    });
 
   return { text: def[currentStep + 1].prompt };
 }
 
-export async function getReport(flow: FlowType, { userIds, from, to }: ReportFilter): Promise<TextResponse> {
+export async function getReport(
+  flow: FlowType,
+  { userIds, from, to }: ReportFilter,
+): Promise<TextResponse> {
+  const map: {
+    [userId: string]: {
+      [createdAt: string]: {
+        [Step in FlowStep<FlowType>]?: string;
+      };
+    };
+  } = {};
 
-  const map: { [userId: string]: {
-    [createdAt: string]: {
-      [Step in FlowStep<FlowType>]?: string;
-    }
-  } } = {};
-
-  const reports = await getRef("reports")
-    .where("type", "==", flow)
-    .where("createdAt", ">=", from)
-    .where("createdAt", "<=", to)
-    .where("userId", "in", userIds)
-    .get();
+  const [reports, users] = await Promise.all([
+    getRef("reports")
+      .where("type", "==", flow)
+      .where("createdAt", ">=", from)
+      .where("createdAt", "<=", to)
+      .where("userId", "in", userIds)
+      .get(),
+    getUsersMap(),
+  ]);
 
   if (reports.empty) {
-    return { text : "No reports found" };
+    return { text: "No reports were found." };
   }
 
-  reports.docs.forEach(doc => {
-    const {reply, userId, step, createdAt } = doc.data();
+  reports.docs.forEach((doc) => {
+    const { reply, userId, step, createdAt } = doc.data();
     if (!map[userId]) {
       map[userId] = {};
     }
@@ -93,23 +122,23 @@ export async function getReport(flow: FlowType, { userIds, from, to }: ReportFil
       map[userId][createdAt] = {};
     }
 
-    map[userId][createdAt][step] = reply; 
+    map[userId][createdAt][step] = reply;
   });
 
-  const report = userIds.map(userId => {
+  const report = userIds.map((userId) => {
     const userReport = map[userId];
 
-    const report = Object.keys(userReport).map(createdAt => {
+    const report = Object.keys(userReport).map((createdAt) => {
       const steps = userReport[createdAt];
 
-      const report = config[flow].map(({step, name}) => {
-        return `*${name}*\n${steps[step] ? steps[step] : "No reply"}`;
+      const report = config[flow].map(({ step, name }) => {
+        return `*${name}*\n${steps[step] ? steps[step] : "No reply"}\n`;
       });
 
       return `_${toDate(parseInt(createdAt)).toUTCString()}_\n${report.join("\n")}`;
     });
 
-    return `*${userId}*\n${report.join("\n")}`;
+    return `*${users[userId].displayName}*\n\n${report.join("\n")}`;
   });
 
   return { text: report.join("\n") };

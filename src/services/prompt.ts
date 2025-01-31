@@ -1,121 +1,222 @@
-import { CardClickedEvent, DateInput, StringInputs } from "../types/event";
+import {
+  CardClickedEvent,
+  DateInput,
+  FormAction,
+  TimeInput,
+} from "../types/event";
 import { ReportFilter } from "../types/flow";
-import { CardsResponse, SelectionItem } from "../types/respose";
-import { getTimestamp } from "../utils/time";
-import { getRef } from "./database";
+import { CardsResponse, Section, Widget } from "../types/respose";
+import { Schedule, Time } from "../types/schedule";
+import { getTimestamp, getToDate } from "../utils/time";
+import { getAudience, getUserWidget, mapUsers } from "./users";
+
+export async function getStatusPrompt(): Promise<CardsResponse> {
+  return await getPrompt({
+    cardId: "status",
+    title: "Get Status",
+    buttonText: "Get Status",
+    action: "getStatus",
+  });
+}
+
+export async function getUnschedulePrompt(): Promise<CardsResponse> {
+  return await getPrompt({
+    cardId: "unschedule",
+    title: "Unschedule",
+    buttonText: "Deactivate",
+    action: "deactivateSchedule",
+  });
+}
 
 export async function getReportPrompt(): Promise<CardsResponse> {
-  const users = await getRef("users").get();
-
-  const items: SelectionItem[] = users.docs.map(doc => {
-    const { displayName, email } = doc.data();
-    return {
-      text: displayName,
-      value: email,
-      selected: true
-    };
-  });
-
   const to = getToDate().getTime();
   const from = to - 1000 * 60 * 60 * 24;
 
-  const result: CardsResponse = {
-    cardsV2: [{
-      cardId: "",
-      card: {
-        header: {
-          title: "Report"
+  const section: Section = {
+    header: "Pick out date",
+    widgets: [
+      {
+        dateTimePicker: {
+          name: "from",
+          label: "From Date",
+          type: "DATE_ONLY",
+          valueMsEpoch: String(from),
         },
-        sections: [{
-          header: "Fellows",
-          widgets: [
-            {
-              selectionInput: {
-                type: "CHECK_BOX",
-                name: "fellows",
-                items
-              }
-            }
-          ]
-        }, {
-          header: "Pick out date",
-          widgets: [
-            {
-              dateTimePicker: {
-                name: "from",
-                label: "From Date",
-                type: "DATE_ONLY",
-                valueMsEpoch: String(from),
-              }
-            },
-            {
-              dateTimePicker: {
-                name: "to",
-                label: "To Date",
-                type: "DATE_ONLY",
-                valueMsEpoch: String(to)
-              }
-            }
-          ]
-        }, {
-          widgets: [
-            {
-              buttonList: {
-                buttons: [
-                  {
-                    text: "Show Report",
-                    onClick: {
-                      action: {
-                        function: "getReport"
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        }]
-      }
-    }]
+      },
+      {
+        dateTimePicker: {
+          name: "to",
+          label: "To Date",
+          type: "DATE_ONLY",
+          valueMsEpoch: String(to),
+        },
+      },
+    ],
   };
 
-  return result;
+  return await getPrompt({
+    cardId: "report",
+    title: "Report",
+    buttonText: "Get Report",
+    action: "getReport",
+    checked: true,
+    section,
+  });
+}
+
+export async function getSchedulePrompt(): Promise<CardsResponse> {
+  const schedule = new Date().getTime();
+  const section: Section = {
+    header: "Pick out active period",
+    widgets: [
+      {
+        dateTimePicker: {
+          name: "start",
+          label: "Start",
+          type: "TIME_ONLY",
+          valueMsEpoch: String(schedule),
+        },
+      },
+      {
+        dateTimePicker: {
+          name: "finish",
+          label: "Finish",
+          type: "TIME_ONLY",
+          valueMsEpoch: String(schedule),
+        },
+      },
+    ],
+  };
+
+  return await getPrompt({
+    cardId: "schedule",
+    title: "Schedule",
+    buttonText: "Activate",
+    action: "activateSchedule",
+    section,
+  });
 }
 
 export function getReportFilter(event: CardClickedEvent): ReportFilter {
-  const { common: { formInputs: {
-    fellows,
-    from,
-    to
-  }}} = event;
-
-  const { 
-    stringInputs: { 
-      value: userIds 
-    } 
-  } = fellows as StringInputs;
-
-  const { 
-    dateInput: { 
-      msSinceEpoch: fromDate 
-    } 
-  } = from as DateInput;
-
-  const { 
-    dateInput: { 
-      msSinceEpoch: toDate 
-    } 
-  } = to as DateInput;
-
   return {
-    userIds,
-    from: getTimestamp(parseInt(fromDate)),
-    to: getTimestamp(parseInt(toDate))
+    userIds: getAudience(event),
+    from: getInputTimestamp(event, "from"),
+    to: getInputTimestamp(event, "to"),
   };
 }
 
-function getToDate() {
-  const result = new Date();
-  result.setUTCHours(0, 0, 0, 0);
+export function getSchedule(event: CardClickedEvent): Schedule {
+  const userIds = getAudience(event);
+  const start = getInputTime(event, "start");
+  const finish = getInputTime(event, "finish");
+
+  return {
+    userIds,
+    start,
+    finish,
+  };
+}
+
+async function getPrompt({
+  cardId,
+  title,
+  buttonText,
+  action,
+  header = "Fellows",
+  checked = false,
+  section,
+}: {
+  cardId: string;
+  title: string;
+  buttonText: string;
+  action: FormAction["actionMethodName"];
+  header?: string;
+  checked?: boolean;
+  section?: Section;
+}): Promise<CardsResponse> {
+  const widgets = await getUserWidgets(checked);
+
+  const result: CardsResponse = {
+    cardsV2: [
+      {
+        cardId,
+        card: {
+          header: {
+            title,
+          },
+          sections: [
+            {
+              header,
+              widgets,
+            },
+            {
+              widgets: [
+                {
+                  buttonList: {
+                    buttons: [
+                      {
+                        text: buttonText,
+                        onClick: {
+                          action: {
+                            function: action,
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  if (section) {
+    result.cardsV2[0].card.sections?.splice(1, 0, section);
+  }
+
   return result;
+}
+
+async function getUserWidgets(selected = false): Promise<Widget[]> {
+  return await mapUsers((user, schedule) => {
+    const result = getUserWidget(user, schedule);
+    result.decoratedText.switchControl = {
+      name: "fellows",
+      value: user.email,
+      selected,
+      controlType: "CHECK_BOX",
+    };
+
+    return result;
+  });
+}
+
+function getInputTimestamp(event: CardClickedEvent, inputName: string): number {
+  const {
+    common: { formInputs },
+  } = event;
+
+  const {
+    dateInput: { msSinceEpoch },
+  } = formInputs[inputName] as DateInput;
+
+  return getTimestamp(parseInt(msSinceEpoch));
+}
+
+function getInputTime(event: CardClickedEvent, inputName: string): Time {
+  const {
+    common: { formInputs },
+  } = event;
+
+  const {
+    timeInput: { hours, minutes },
+  } = formInputs[inputName] as TimeInput;
+
+  return {
+    hours,
+    minutes,
+  };
 }

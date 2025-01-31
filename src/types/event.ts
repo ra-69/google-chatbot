@@ -1,11 +1,18 @@
+import { Kind } from "./schedule";
+
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event */
-export type ChatEvent = MessageEvent | RemovedFromSpaceEvent | AddedToSpaceEvent | CardClickedEvent;
+export type ChatEvent =
+  | MessageEvent
+  | RemovedFromSpaceEvent
+  | AddedToSpaceEvent
+  | CardClickedEvent
+  | CollectReportEvent;
 
 export type EventContext = {
   eventTime: string;
   user: User;
   space: Space;
-}
+};
 
 export type MessageEvent = {
   type: "MESSAGE";
@@ -22,9 +29,15 @@ export type AddedToSpaceEvent = {
 
 export type CardClickedEvent = {
   type: "CARD_CLICKED";
+  action: FormAction;
   common: CommonEventObject;
 } & EventContext;
 
+export type CollectReportEvent = {
+  type: "COLLECT_REPORTS";
+  userIds: string[];
+  kind: Kind;
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/User */
 export type User = {
@@ -66,27 +79,43 @@ export type Message = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#slashcommand */
 export type SlashCommand = {
-  commandId: "1" | "2" | "3";
-}
+  commandId: "1" | "2" | "3" | "4" | "5";
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event#commoneventobject */
 export type CommonEventObject = {
   formInputs: {
     [widgetName: string]: Inputs;
-  }
-}
+  };
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event#inputs */
-export type Inputs = DateInput | StringInputs;
+export type Inputs = DateInput | TimeInput | StringInputs;
 
 export type DateInput = {
   dateInput: {
     msSinceEpoch: string;
-  }
-}
+  };
+};
 
 export type StringInputs = {
   stringInputs: {
     value: string[];
-  }
-}
+  };
+};
+
+export type TimeInput = {
+  timeInput: {
+    hours: number;
+    minutes: number;
+  };
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards-v1#formaction */
+export type FormAction = {
+  actionMethodName:
+    | "getReport"
+    | "activateSchedule"
+    | "deactivateSchedule"
+    | "getStatus";
+};

@@ -4,7 +4,11 @@ import { FlowState, StatusReport } from "../types/flow";
 
 export const db = new Firestore();
 
-type Entity<T extends Collection> = T extends "users" ? User : T extends "flows" ? FlowState : Report;
+type Entity<T extends Collection> = T extends "users"
+  ? User
+  : T extends "flows"
+    ? FlowState
+    : Report;
 
 type Collection = "users" | "flows" | "reports";
 

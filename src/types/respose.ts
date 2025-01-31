@@ -1,9 +1,13 @@
+import { FormAction } from "./event";
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#resource:-message */
-export type ChatResponse = { actionResponse: ActionResponse } | TextResponse | CardsResponse;
+export type ChatResponse =
+  | { actionResponse: ActionResponse }
+  | TextResponse
+  | CardsResponse;
 
 export type TextResponse = {
-  text: string; 
+  text: string;
 };
 
 export type CardsResponse = {
@@ -31,7 +35,7 @@ export type Dialog = {
   body: Card;
 };
 
-/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.Card_1 */ 
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.Card_1 */
 export type Card = {
   header?: CardHeader;
   fixedFooter?: CardFixedFooter;
@@ -59,8 +63,8 @@ export type CardButton = {
   onClick?: {
     action: {
       actionMethodName: string;
-    }
-  }
+    };
+  };
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Color */
@@ -78,17 +82,22 @@ export type Section = {
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#widget */
-export type Widget = { textInput: TextInput } | { decoratedText: DecoratedText } | { dateTimePicker: DateTimePicker } | { selectionInput: SelectionInput} | { buttonList: ButtonList };
+export type Widget =
+  | { textInput: TextInput }
+  | { decoratedText: DecoratedText }
+  | { dateTimePicker: DateTimePicker }
+  | { selectionInput: SelectionInput }
+  | { buttonList: ButtonList };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#textinput */
 export type TextInput = {
   name: string;
-    label?: string;
-    value?: string;
-    hintText?: string;
-    placeholderText?: string;
-    type: "SINGLE_LINE" | "MULTIPLE_LINE";
-}
+  label?: string;
+  value?: string;
+  hintText?: string;
+  placeholderText?: string;
+  type: "SINGLE_LINE" | "MULTIPLE_LINE";
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#decoratedtext */
 export type DecoratedText = {
@@ -97,6 +106,7 @@ export type DecoratedText = {
   topLabel?: string;
   text: string;
   bottomLabel?: string;
+  switchControl?: SwitchControl;
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#icon */
@@ -106,7 +116,7 @@ export type Icon = {
   knownIcon?: string;
   iconUrl?: string;
   materialIcon?: MaterialIcon;
-}
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#materialicon */
 export type MaterialIcon = {
@@ -114,7 +124,18 @@ export type MaterialIcon = {
   fill: boolean;
   weight: number;
   grade: number;
-}
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.SwitchControl */
+export type SwitchControl = {
+  name: string;
+  value?: string;
+  selected: boolean;
+  controlType: ControlType;
+};
+
+/** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#controltype */
+export type ControlType = "CHECK_BOX" | "RADIO_BUTTON" | "SWITCH";
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#Message.CardAction */
 export type CardAction = {
@@ -122,8 +143,8 @@ export type CardAction = {
   onClick: {
     action: {
       actionMethodName: string;
-    }
-  }
+    };
+  };
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#datetimepicker */
@@ -139,7 +160,7 @@ export type DateTimePicker = {
 export type SelectionInput = {
   name: string;
   label?: string;
-  type: "CHECK_BOX" | "RADIO_BUTTON" | "SWITCH";
+  type: ControlType;
   items: SelectionItem[];
 };
 
@@ -152,23 +173,21 @@ export type SelectionItem = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#buttonlist */
 export type ButtonList = {
-  buttons: [
-    Button
-  ]
+  buttons: [Button];
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#button */
 export type Button = {
   text: string;
   onClick: OnClick;
-}
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#onclick */
 export type OnClick = {
   action: Action;
-}
+};
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#action */
 export type Action = {
-  function: string;
-}
+  function: FormAction["actionMethodName"];
+};

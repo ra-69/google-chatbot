@@ -6,11 +6,12 @@
   "scripts": {
     "lint": "eslint src/**/*.ts",
     "build": "tsc",
-    "dev": "npm run build && npx @google-cloud/functions-framework --target=chatBot",
-    "dev:debug": "functions-framework --target=chatBot",
-    "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated",
+    "dev": "npm run build && env-cmd functions-framework --target=chatBot",
+    "dev:debug": "env-cmd functions-framework --target=chatBot",
+    "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated --set-env-vars ADMIN='r.navarych@softteco.com;a.silchankau@softteco.com',PARENT='projects/magnetic-nimbus-385019/locations/us-central1',HOST='https://us-central1-magnetic-nimbus-385019.cloudfunctions.net/chatBot'",
     "ngrok": "ngrok http 8080",
-    "ngrok:andrei": "ngrok http 8080 --url https://kingfish-literate-poodle.ngrok-free.app"
+    "ngrok:andrei": "ngrok http 8080 --url https://kingfish-literate-poodle.ngrok-free.app",
+    "prettier": "prettier --write src/"
   },
   "author": "",
   "license": "ISC",
@@ -18,13 +19,17 @@
   "dependencies": {
     "@google-apps/chat": "^0.11.0",
     "@google-cloud/firestore": "^7.11.0",
-    "@google-cloud/functions-framework": "^3.4.5"
+    "@google-cloud/functions-framework": "^3.4.5",
+    "@google-cloud/scheduler": "^4.3.0",
+    "@googleapis/chat": "^32.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@types/node": "^22.10.7",
+    "env-cmd": "^10.1.0",
     "eslint": "^9.18.0",
     "globals": "^15.14.0",
+    "prettier": "3.4.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"

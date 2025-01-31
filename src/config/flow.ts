@@ -10,12 +10,12 @@ export const config: FlowConfig = {
     {
       step: "IN_PROGRESS",
       name: "In Progress",
-      prompt: "What are you working on tomorrow?"
+      prompt: "What are you working on tomorrow?",
     },
     {
       step: "BLOCKERS",
       name: "Blockers",
-      prompt: "Are you blocked on anything?"
-    }
-  ]
+      prompt: "Are you blocked on anything?",
+    },
+  ],
 };
