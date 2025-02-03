@@ -1,5 +1,5 @@
 {
-  "name": "google-chatbot",
+  "name": "daily-report-bot",
   "version": "1.0.0",
   "main": "index.js",
   "type": "commonjs",
