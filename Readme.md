@@ -11,18 +11,18 @@ The application collects daily status reports.
 
 ## Run locally
 - Run node application `npm run dev`
-- Launch ngrok `ngrok http 8080 -url <your domain>`
+- Launch ngrok `ngrok http 8080 --url <your domain>`
 
 ## Google Cloud Application Setup
 The application expoits [Google Chat API](https://developers.google.com/workspace/chat/api-overview) and probably might have been installed as a production service, thus for development purposes it is recommended to maintain some isolated application in the Google Cloud. Please follow the guidance below to create and configure Google Chat Application:
 - Build an Http Google Chat [app](https://developers.google.com/workspace/chat/quickstart/gcf-app)
 
 The following slash commands should be specified:
-- /status (id=1) to Report daily status
-- /team (id=2) to List team members
-- /report (id=3) to Evaluate team's report
-- /schedule (id=4) to Enable report scheduling
-- /unschedule (id=5) to Disable report scheduling
+- `/status` (id=1) to Report daily status
+- `/team` (id=2) to List team members
+- `/report` (id=3) to Evaluate team's report
+- `/schedule` (id=4) to Enable report scheduling
+- `/unschedule` (id=5) to Disable report scheduling
 
 For development needs use your `ngrok` domain as an Http endpoint URL and App Home URL.
 
