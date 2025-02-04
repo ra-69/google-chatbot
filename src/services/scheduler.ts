@@ -64,7 +64,7 @@ async function activateSchedule({
   userIds: string[];
   time: Time;
   kind: Kind;
-}) {
+}): Promise<void> {
   const { minutes, hours } = time;
   const schedule = `${minutes} ${hours} * * 1-5`;
   const jobs = await getJobs();
@@ -148,6 +148,21 @@ async function activateSchedule({
 export async function unscheduleReport(
   userIds: string[],
 ): Promise<TextResponse> {
+  const actions = [
+    deactivateSchedule(userIds, "start"),
+    deactivateSchedule(userIds, "finish"),
+  ];
+
+  await Promise.all(actions);
+  return {
+    text: "Schedules were disabled.",
+  };
+}
+
+async function deactivateSchedule(
+  userIds: string[],
+  kind: Kind,
+): Promise<void> {
   const scheduleMap = await getScheduleMap();
   const schedules: (Job & UsersContext & TimeContext)[] = Object.entries(
     scheduleMap,
@@ -158,8 +173,9 @@ export async function unscheduleReport(
     let update = updates.find(({ userIds }) => userIds.includes(userId));
 
     if (!update) {
-      const index = schedules.findIndex(({ userIds }) =>
-        userIds.includes(userId),
+      const index = schedules.findIndex(
+        ({ userIds, kind: scheduleKind }) =>
+          userIds.includes(userId) && scheduleKind === kind,
       );
 
       if (index !== -1) {
@@ -176,9 +192,7 @@ export async function unscheduleReport(
   });
 
   if (updates.length === 0) {
-    return {
-      text: "No active schedules were found.",
-    };
+    return;
   }
 
   const client = getClient();
@@ -200,9 +214,6 @@ export async function unscheduleReport(
   });
 
   await Promise.all(actions);
-  return {
-    text: "Schedules were disabled.",
-  };
 }
 
 export async function getScheduleList(): Promise<TextResponse> {
