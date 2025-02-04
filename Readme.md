@@ -7,7 +7,20 @@ The application collects daily status reports.
 
 ## Installation
 - Install node project with `npm run i`
-- Add domain in [ngrok](https://dashboard.ngrok.com/domains) 
+- Add domain in [ngrok](https://dashboard.ngrok.com/domains)
+
+## Environment variables
+- To develop application locally create `.env` file structured as below
+```
+HOST=<ngrok proxy url like "https://crayfish-literate-poodle.ngrok-free.app">
+ADMIN=<list of admins separated by ';' like "r.navarych@softteco.com;a.silchankau@softteco.com">
+PARENT_MSG=<get DM space following this instruction: https://developers.google.com/workspace/chat/list-spaces#node.js_1 like "spaces/5HYbHcAAADE">
+PARENT="projects/<your project id like magnetic-nimbus-385019>/locations/<location like us-central1>"
+```
+- To determine `PARENT_MSG` and `PARENT` you need to setup Google Cloud Application as described below
+
+## Credentials file
+
 
 ## Run locally
 - Run node application `npm run dev`
@@ -27,6 +40,11 @@ The following slash commands should be specified:
 For development needs use your `ngrok` domain as an Http endpoint URL and App Home URL.
 
 - Setup Google Cloud Firestore [Database](https://cloud.google.com/firestore/docs/create-database-server-client-library)
+
+## Deployment
+- Install gcloud [CLI](https://cloud.google.com/sdk/docs/install)
+- Run `npm run deploy` after replacing environment variables in the script to your own. Note that HOST environment variable should points to the deployment url itself.
+- Set deployment url as Http endpoint URL and App Home URL in Google Chat API settings.
 
 ## Useful documentation
 - Getting started with Google Cloud [Functions](https://cloud.google.com/functions/docs/console-quickstart)
