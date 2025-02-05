@@ -1,11 +1,12 @@
 import { config } from "../config/flow";
 import { MessageEvent } from "../types/event";
-import { FlowStep, FlowType, ReportFilter } from "../types/flow";
+import { FlowType, ReportFilter, ReportMap } from "../types/flow";
 import { TextResponse } from "../types/respose";
+import { User } from "../types/user";
 import { getTimestamp, toDate } from "../utils/time";
 import { getRef } from "./database";
 import { sendMessage } from "./message";
-import { getUsersMap } from "./users";
+import { getAdmins, getUsersMap } from "./users";
 
 export async function startFlow(
   flow: FlowType,
@@ -37,9 +38,15 @@ export async function finishFlow(
   const current = (await getRef("flows").doc(userId).get()).data();
 
   if (current) {
-    sendMessage({
-      text: message,
+    sendMessage({ text: message, userId });
+    const { activeFlow: flow, createdAt } = current;
+
+    notifyAdmins({
+      flow,
       userId,
+      createdAt,
+      missedReportMessage: "Did not reply.",
+      subtitle: "Failed to complete reporting in the assigned time.",
     });
   }
 }
@@ -71,6 +78,14 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
   if (currentStep >= def.length - 1) {
     await getRef("flows").doc(userId).delete();
 
+    notifyAdmins({
+      flow: activeFlow,
+      userId,
+      createdAt,
+      missedReportMessage: "Did not reply.",
+      subtitle: "Submitted report.",
+    });
+
     return { text: "Thank you. Have a wonderful day!" };
   }
 
@@ -86,31 +101,85 @@ export async function handleFlow(event: MessageEvent): Promise<TextResponse> {
   return { text: def[currentStep + 1].prompt };
 }
 
+async function getReportContent({
+  flow,
+  userIds,
+  map,
+  users,
+  timezone = 0,
+  missedReportMessage = "Did not reply.",
+  subtitle = "",
+}: {
+  flow: FlowType;
+  userIds: string[];
+  map: ReportMap;
+  users: { [userId: string]: User };
+  timezone?: number;
+  missedReportMessage?: string;
+  subtitle?: string;
+}): Promise<TextResponse> {
+  const report = userIds.map((userId) => {
+    const userReport = map[userId];
+
+    if (!userReport) {
+      return `*${users[userId].displayName}*\n_${missedReportMessage}_\n`;
+    }
+
+    const report = Object.keys(userReport).map((createdAt) => {
+      const steps = userReport[createdAt];
+
+      const report = config[flow].map(({ step, name }) => {
+        return `*${name}*\n${steps[step] ? steps[step] : "No reply"}\n`;
+      });
+
+      const date = toDate(parseInt(createdAt));
+      const timeZone = `${timezone >= 0 ? "+" : ""}${timezone.toString().padStart(2, "0")}:00`;
+      const dateStamp = date.toLocaleDateString("en-US", { timeZone });
+      const timeStamp = date.toLocaleTimeString("en-US", { timeZone });
+
+      return `_${dateStamp} ${timeStamp}_\n${report.join("\n")}`;
+    });
+
+    return `*${users[userId].displayName}*\n\n${subtitle ? `${subtitle}\n` : ""}${report.join("\n")}`;
+  });
+
+  return { text: report.join("\n") };
+}
+
 export async function getReport(
   flow: FlowType,
-  { userIds, from, to }: ReportFilter,
+  filter: ReportFilter,
+  timezone = 0,
+  missedReportMessage = "Did not reply.",
+  subtitle = "",
 ): Promise<TextResponse> {
-  const map: {
-    [userId: string]: {
-      [createdAt: string]: {
-        [Step in FlowStep<FlowType>]?: string;
-      };
-    };
-  } = {};
-
-  const [reports, users] = await Promise.all([
-    getRef("reports")
-      .where("type", "==", flow)
-      .where("createdAt", ">=", from)
-      .where("createdAt", "<=", to)
-      .where("userId", "in", userIds)
-      .get(),
+  const [users, map] = await Promise.all([
     getUsersMap(),
+    getReportMap(flow, filter),
   ]);
 
-  if (reports.empty) {
-    return { text: "No reports were found." };
-  }
+  return await getReportContent({
+    flow,
+    userIds: filter.userIds,
+    map,
+    users,
+    timezone,
+    missedReportMessage,
+    subtitle,
+  });
+}
+
+async function getReportMap(
+  flow: FlowType,
+  { userIds, from, to }: ReportFilter,
+): Promise<ReportMap> {
+  const map: ReportMap = {};
+  const reports = await getRef("reports")
+    .where("type", "==", flow)
+    .where("createdAt", ">=", from)
+    .where("createdAt", "<=", to)
+    .where("userId", "in", userIds)
+    .get();
 
   reports.docs.forEach((doc) => {
     const { reply, userId, step, createdAt } = doc.data();
@@ -125,21 +194,54 @@ export async function getReport(
     map[userId][createdAt][step] = reply;
   });
 
-  const report = userIds.map((userId) => {
-    const userReport = map[userId];
+  return map;
+}
 
-    const report = Object.keys(userReport).map((createdAt) => {
-      const steps = userReport[createdAt];
+async function notifyAdmins({
+  flow,
+  createdAt,
+  userId,
+  missedReportMessage,
+  subtitle,
+}: {
+  flow: FlowType;
+  userId: string;
+  createdAt: number;
+  missedReportMessage?: string;
+  subtitle?: string;
+}): Promise<void> {
+  const to = getTimestamp(new Date().getTime());
 
-      const report = config[flow].map(({ step, name }) => {
-        return `*${name}*\n${steps[step] ? steps[step] : "No reply"}\n`;
-      });
+  const [users, map] = await Promise.all([
+    getUsersMap(),
+    getReportMap(flow, {
+      userIds: [userId],
+      from: createdAt,
+      to,
+    }),
+  ]);
 
-      return `_${toDate(parseInt(createdAt)).toUTCString()}_\n${report.join("\n")}`;
+  const actions = getAdmins()
+    .filter((adminId) => adminId !== userId)
+    .map((adminId) => {
+      return (async (adminId: string) => {
+        const { timezone } = users[userId];
+        const { text } = await getReportContent({
+          flow,
+          userIds: [userId],
+          map,
+          users,
+          timezone,
+          missedReportMessage,
+          subtitle,
+        });
+
+        await sendMessage({
+          text,
+          userId: adminId,
+        });
+      })(adminId);
     });
 
-    return `*${users[userId].displayName}*\n\n${report.join("\n")}`;
-  });
-
-  return { text: report.join("\n") };
+  Promise.all(actions);
 }

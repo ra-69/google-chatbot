@@ -79,7 +79,7 @@ export type Message = {
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages#slashcommand */
 export type SlashCommand = {
-  commandId: "1" | "2" | "3" | "4" | "5";
+  commandId: "1" | "2" | "3" | "4" | "5" | "6";
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event#commoneventobject */
@@ -117,5 +117,6 @@ export type FormAction = {
     | "getReport"
     | "activateSchedule"
     | "deactivateSchedule"
-    | "getStatus";
+    | "getStatus"
+    | "setTimezone";
 };

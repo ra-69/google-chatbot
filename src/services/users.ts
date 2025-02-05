@@ -1,12 +1,13 @@
-import { CardClickedEvent, StringInputs, User } from "../types/event";
+import { User } from "../types/event";
+import { User as UserRecord } from "../types/user";
 import { CardsResponse, DecoratedText, Widget } from "../types/respose";
 import { UsersMap } from "../types/schedule";
 import { getTime } from "../utils/time";
 import { getRef } from "./database";
 import { getUsersMap as getUsersJobMap } from "./scheduler";
 
-export async function listTeam(): Promise<CardsResponse> {
-  const widgets = await mapUsers(getUserWidget);
+export async function listTeam(timezone: number): Promise<CardsResponse> {
+  const widgets = await mapUsers(getUserWidget, timezone);
 
   return {
     cardsV2: [
@@ -29,7 +30,7 @@ export async function listTeam(): Promise<CardsResponse> {
 
 export async function getUsersMap() {
   const users = await getRef("users").get();
-  const result: { [userId: string]: User } = {};
+  const result: { [userId: string]: UserRecord } = {};
 
   users.docs.forEach((doc) => {
     result[doc.id] = doc.data();
@@ -39,7 +40,8 @@ export async function getUsersMap() {
 }
 
 export async function mapUsers(
-  operator: (user: User, schedules: UsersMap) => Widget,
+  operator: (user: User, schedules: UsersMap, timezone: number) => Widget,
+  timezone = 0,
 ): Promise<Widget[]> {
   const [users, schedules] = await Promise.all([
     getRef("users").get(),
@@ -48,7 +50,7 @@ export async function mapUsers(
 
   const widgets = users.docs.map((doc): Widget => {
     const user = doc.data();
-    return operator(user, schedules);
+    return operator(user, schedules, timezone);
   });
 
   return widgets;
@@ -57,6 +59,7 @@ export async function mapUsers(
 export function getUserWidget(
   user: User,
   schedules: UsersMap,
+  timezone = 0,
 ): { decoratedText: DecoratedText } {
   const { displayName, email, avatarUrl } = user;
   const schedule = schedules[email];
@@ -69,31 +72,20 @@ export function getUserWidget(
       },
       topLabel: email,
       text: displayName,
-      bottomLabel: getTime(schedule?.time),
+      bottomLabel: getTime(schedule?.time, timezone),
     },
   };
 }
 
+export function getAdmins(): string[] {
+  return process.env.ADMIN?.split(";") ?? [];
+}
+
 export function isAdmin(email: string): boolean {
-  const admins = process.env.ADMIN?.split(";") ?? [];
+  const admins = getAdmins();
   return admins.includes(email);
 }
 
-export function getAudience(
-  event: CardClickedEvent,
-  inputName = "fellows",
-): string[] {
-  const {
-    common: { formInputs },
-  } = event;
-
-  if (!formInputs || !formInputs[inputName]) {
-    return [];
-  }
-
-  const {
-    stringInputs: { value },
-  } = formInputs[inputName] as StringInputs;
-
-  return value;
+export async function getUser(email: string): Promise<UserRecord | undefined> {
+  return (await getRef("users").doc(email).get()).data();
 }

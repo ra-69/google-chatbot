@@ -12,6 +12,7 @@ import {
   UsersMap,
 } from "../types/schedule";
 import { TextResponse } from "../types/respose";
+import { toUtc } from "../utils/time";
 
 type IJob = protos.google.cloud.scheduler.v1.IJob;
 type IHttpTarget = protos.google.cloud.scheduler.v1.IHttpTarget;
@@ -27,11 +28,10 @@ function getClient() {
   return client;
 }
 
-export async function scheduleReport({
-  userIds,
-  start,
-  finish,
-}: Schedule): Promise<TextResponse> {
+export async function scheduleReport(
+  { userIds, start, finish }: Schedule,
+  timezone = 0,
+): Promise<TextResponse> {
   if (getMinutes(start) >= getMinutes(finish)) {
     return {
       text: "Start time should be greater than finish time.",
@@ -39,16 +39,22 @@ export async function scheduleReport({
   }
 
   Promise.all([
-    activateSchedule({
-      userIds,
-      time: start,
-      kind: "start",
-    }),
-    activateSchedule({
-      userIds,
-      time: finish,
-      kind: "finish",
-    }),
+    activateSchedule(
+      {
+        userIds,
+        time: start,
+        kind: "start",
+      },
+      timezone,
+    ),
+    activateSchedule(
+      {
+        userIds,
+        time: finish,
+        kind: "finish",
+      },
+      timezone,
+    ),
   ]);
 
   return {
@@ -56,16 +62,19 @@ export async function scheduleReport({
   };
 }
 
-async function activateSchedule({
-  userIds,
-  time,
-  kind,
-}: {
-  userIds: string[];
-  time: Time;
-  kind: Kind;
-}): Promise<void> {
-  const { minutes, hours } = time;
+async function activateSchedule(
+  {
+    userIds,
+    time,
+    kind,
+  }: {
+    userIds: string[];
+    time: Time;
+    kind: Kind;
+  },
+  timezone: number,
+): Promise<void> {
+  const { minutes, hours } = toUtc(time, timezone);
   const schedule = `${minutes} ${hours} * * 1-5`;
   const jobs = await getJobs();
   const schedules = await getScheduleMap(jobs);
@@ -346,6 +355,6 @@ function getUsersContext(job: IJob): (UsersContext & KindContext) | undefined {
   };
 }
 
-function getMinutes({ hours, minutes }: Time): number {
+function getMinutes({ hours = 0, minutes = 0 }: Time): number {
   return hours * 60 + minutes;
 }

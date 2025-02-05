@@ -5,9 +5,10 @@ import {
   getReportPrompt,
   getSchedulePrompt,
   getStatusPrompt,
+  getTimezonePrompt,
   getUnschedulePrompt,
 } from "./prompt";
-import { isAdmin, listTeam } from "./users";
+import { getUser, isAdmin, listTeam } from "./users";
 
 export async function handleCommand(
   event: MessageEvent,
@@ -19,23 +20,37 @@ export async function handleCommand(
 
   switch (slashCommand?.commandId) {
     case "1":
-      return await runForAdmin(user, getStatusPrompt);
+      return await run(user, getStatusPrompt);
     case "2":
-      return await listTeam();
+      return await run(user, listTeam, false);
     case "3":
-      return await getReportPrompt();
+      return await run(user, getReportPrompt, false);
     case "4":
-      return await runForAdmin(user, getSchedulePrompt);
+      return await run(user, getSchedulePrompt);
     case "5":
-      return await runForAdmin(user, getUnschedulePrompt);
+      return await run(user, getUnschedulePrompt);
+    case "6":
+      return await getTimezonePrompt(user.email);
     default:
       return await handleFlow(event);
   }
 }
 
-async function runForAdmin(user: User, op: () => Promise<CardsResponse>) {
-  if (isAdmin(user.email)) {
-    return await op();
+async function run(
+  user: User,
+  op: (timezone: number) => Promise<CardsResponse>,
+  forAdmin = true,
+) {
+  if (!forAdmin || isAdmin(user.email)) {
+    const current = await getUser(user.email);
+
+    if (!current) {
+      return {
+        text: "You must be added to the system first.",
+      };
+    }
+
+    return await op(current.timezone ?? 0);
   }
 
   return {

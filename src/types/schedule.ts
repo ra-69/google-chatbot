@@ -6,8 +6,8 @@ export type Schedule = UsersContext & {
 export type Unschedule = UsersContext;
 
 export type Time = {
-  hours: number;
-  minutes: number;
+  hours?: number;
+  minutes?: number;
 };
 
 export type ScheduleMap = {

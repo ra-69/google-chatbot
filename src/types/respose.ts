@@ -168,7 +168,7 @@ export type SelectionInput = {
 export type SelectionItem = {
   text: string;
   value: string;
-  selected: boolean;
+  selected?: boolean;
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/cards#buttonlist */

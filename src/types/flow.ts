@@ -34,3 +34,11 @@ export type ReportFilter = {
   from: number;
   to: number;
 };
+
+export type ReportMap = {
+  [userId: string]: {
+    [createdAt: string]: {
+      [Step in FlowStep<FlowType>]?: string;
+    };
+  };
+};

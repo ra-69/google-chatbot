@@ -1,6 +1,7 @@
 import { AddedToSpaceEvent } from "../types/event";
 import { TextResponse } from "../types/respose";
 import { getRef } from "./database";
+import { getUser } from "./users";
 
 export async function handleAddedToSpaceEvent(
   event: AddedToSpaceEvent,
@@ -8,10 +9,13 @@ export async function handleAddedToSpaceEvent(
   if (event.space.type === "DM") {
     const { user } = event;
     const ref = getRef("users");
-    const userRecord = (await ref.doc(user.email).get()).data();
+    const userRecord = await getUser(user.email);
 
     if (!userRecord) {
-      await ref.doc(user.email).set(user);
+      await ref.doc(user.email).set({
+        ...user,
+        timezone: 0,
+      });
     }
 
     return { text: `Thanks for adding me to a DM, ${event.user.displayName}` };

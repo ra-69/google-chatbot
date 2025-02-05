@@ -1,34 +1,59 @@
+import { timezones } from "../config/timezone";
 import {
   CardClickedEvent,
   DateInput,
   FormAction,
+  StringInputs,
   TimeInput,
 } from "../types/event";
 import { ReportFilter } from "../types/flow";
 import { CardsResponse, Section, Widget } from "../types/respose";
 import { Schedule, Time } from "../types/schedule";
 import { getTimestamp, getToDate } from "../utils/time";
-import { getAudience, getUserWidget, mapUsers } from "./users";
+import { getRef } from "./database";
+import { getUserWidget, mapUsers } from "./users";
 
-export async function getStatusPrompt(): Promise<CardsResponse> {
-  return await getPrompt({
+type BasePrompt = {
+  cardId: string;
+  title: string;
+  buttonText: string;
+  action: FormAction["actionMethodName"];
+  section?: Section;
+};
+
+type UsersPrompt = BasePrompt & {
+  timezone: number;
+  header?: string;
+  checked?: boolean;
+};
+
+export async function getStatusPrompt(
+  timezone: number,
+): Promise<CardsResponse> {
+  return await getUsersPrompt({
     cardId: "status",
     title: "Get Status",
     buttonText: "Get Status",
     action: "getStatus",
+    timezone,
   });
 }
 
-export async function getUnschedulePrompt(): Promise<CardsResponse> {
-  return await getPrompt({
+export async function getUnschedulePrompt(
+  timezone: number,
+): Promise<CardsResponse> {
+  return await getUsersPrompt({
     cardId: "unschedule",
     title: "Unschedule",
     buttonText: "Deactivate",
     action: "deactivateSchedule",
+    timezone,
   });
 }
 
-export async function getReportPrompt(): Promise<CardsResponse> {
+export async function getReportPrompt(
+  timezone: number,
+): Promise<CardsResponse> {
   const to = getToDate().getTime();
   const from = to - 1000 * 60 * 60 * 24;
 
@@ -54,18 +79,26 @@ export async function getReportPrompt(): Promise<CardsResponse> {
     ],
   };
 
-  return await getPrompt({
+  return await getUsersPrompt({
     cardId: "report",
     title: "Report",
     buttonText: "Get Report",
     action: "getReport",
     checked: true,
     section,
+    timezone,
   });
 }
 
-export async function getSchedulePrompt(): Promise<CardsResponse> {
-  const schedule = new Date().getTime();
+export async function getSchedulePrompt(
+  timezone: number,
+): Promise<CardsResponse> {
+  const now = new Date();
+  now.setHours(now.getHours() + timezone);
+  now.setMinutes(now.getMinutes() + 5);
+  const start = now.getTime();
+  now.setMinutes(now.getMinutes() + 35);
+  const to = now.getTime();
   const section: Section = {
     header: "Pick out active period",
     widgets: [
@@ -74,7 +107,7 @@ export async function getSchedulePrompt(): Promise<CardsResponse> {
           name: "start",
           label: "Start",
           type: "TIME_ONLY",
-          valueMsEpoch: String(schedule),
+          valueMsEpoch: String(start),
         },
       },
       {
@@ -82,17 +115,52 @@ export async function getSchedulePrompt(): Promise<CardsResponse> {
           name: "finish",
           label: "Finish",
           type: "TIME_ONLY",
-          valueMsEpoch: String(schedule),
+          valueMsEpoch: String(to),
         },
       },
     ],
   };
 
-  return await getPrompt({
+  return await getUsersPrompt({
     cardId: "schedule",
     title: "Schedule",
     buttonText: "Activate",
     action: "activateSchedule",
+    section,
+    timezone,
+  });
+}
+
+export async function getTimezonePrompt(
+  userId: string,
+): Promise<CardsResponse> {
+  const user = (await getRef("users").doc(userId).get()).data();
+  const currentTimezone = (user?.timezone || 0).toString();
+
+  const items = timezones.map((timezone) => ({
+    ...timezone,
+    selected: timezone.value === currentTimezone,
+  }));
+
+  const section: Section = {
+    header: "Pick out time zone",
+    widgets: [
+      {
+        selectionInput: {
+          name: "timeZones",
+          label: "Time Zones",
+          items,
+          type: "RADIO_BUTTON",
+        },
+      },
+    ],
+  };
+
+  return getBasePrompt({
+    cardId: "timezone",
+    title: "Timezone",
+    buttonText: "Set Timezone",
+    action: "setTimezone",
     section,
   });
 }
@@ -117,25 +185,25 @@ export function getSchedule(event: CardClickedEvent): Schedule {
   };
 }
 
-async function getPrompt({
+export function getTimezone(
+  event: CardClickedEvent,
+  inputName = "timeZones",
+): number {
+  const value = getStringInputs(event, inputName);
+  return parseInt(value[0]);
+}
+
+export function getAudience(event: CardClickedEvent): string[] {
+  return getSwithControlInputs(event, (user) => user.indexOf("@") !== -1);
+}
+
+function getBasePrompt({
   cardId,
   title,
   buttonText,
   action,
-  header = "Fellows",
-  checked = false,
   section,
-}: {
-  cardId: string;
-  title: string;
-  buttonText: string;
-  action: FormAction["actionMethodName"];
-  header?: string;
-  checked?: boolean;
-  section?: Section;
-}): Promise<CardsResponse> {
-  const widgets = await getUserWidgets(checked);
-
+}: BasePrompt): CardsResponse {
   const result: CardsResponse = {
     cardsV2: [
       {
@@ -145,10 +213,6 @@ async function getPrompt({
             title,
           },
           sections: [
-            {
-              header,
-              widgets,
-            },
             {
               widgets: [
                 {
@@ -174,17 +238,48 @@ async function getPrompt({
   };
 
   if (section) {
-    result.cardsV2[0].card.sections?.splice(1, 0, section);
+    result.cardsV2[0].card.sections?.unshift(section);
   }
 
   return result;
 }
 
-async function getUserWidgets(selected = false): Promise<Widget[]> {
+async function getUsersPrompt({
+  cardId,
+  title,
+  buttonText,
+  action,
+  header = "Fellows",
+  checked = false,
+  timezone,
+  section,
+}: UsersPrompt): Promise<CardsResponse> {
+  const widgets = await getUserWidgets(timezone, checked);
+
+  const result = getBasePrompt({
+    cardId,
+    title,
+    buttonText,
+    action,
+    section,
+  });
+
+  result.cardsV2[0].card.sections?.unshift({
+    header,
+    widgets,
+  });
+
+  return result;
+}
+
+async function getUserWidgets(
+  timezone: number,
+  selected = false,
+): Promise<Widget[]> {
   return await mapUsers((user, schedule) => {
-    const result = getUserWidget(user, schedule);
+    const result = getUserWidget(user, schedule, timezone);
     result.decoratedText.switchControl = {
-      name: "fellows",
+      name: user.email,
       value: user.email,
       selected,
       controlType: "CHECK_BOX",
@@ -212,11 +307,42 @@ function getInputTime(event: CardClickedEvent, inputName: string): Time {
   } = event;
 
   const {
-    timeInput: { hours, minutes },
+    timeInput: { hours = 0, minutes = 0 },
   } = formInputs[inputName] as TimeInput;
 
   return {
     hours,
     minutes,
   };
+}
+
+function getStringInputs(event: CardClickedEvent, inputName: string): string[] {
+  const {
+    common: { formInputs },
+  } = event;
+
+  if (!formInputs || !formInputs[inputName]) {
+    return [];
+  }
+
+  const {
+    stringInputs: { value },
+  } = formInputs[inputName] as StringInputs;
+
+  return value;
+}
+
+function getSwithControlInputs(
+  event: CardClickedEvent,
+  isValid: (key: string) => boolean,
+): string[] {
+  const {
+    common: { formInputs },
+  } = event;
+
+  if (!formInputs) {
+    return [];
+  }
+
+  return Object.keys(formInputs).filter((key) => isValid(key));
 }

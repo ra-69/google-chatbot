@@ -1,6 +1,6 @@
 import { CollectionReference, Firestore } from "@google-cloud/firestore";
-import { User } from "../types/event";
 import { FlowState, StatusReport } from "../types/flow";
+import { User } from "../types/user";
 
 export const db = new Firestore();
 
