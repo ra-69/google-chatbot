@@ -8,7 +8,7 @@
     "build": "tsc",
     "dev": "npm run build && env-cmd functions-framework --target=chatBot",
     "dev:debug": "env-cmd functions-framework --target=chatBot",
-    "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated --set-env-vars ADMIN='r.navarych@softteco.com;a.silchankau@softteco.com',PARENT='projects/magnetic-nimbus-385019/locations/us-central1',PARENT_MSG='spaces/4HYbHcAAAAE',HOST='https://us-central1-magnetic-nimbus-385019.cloudfunctions.net/chatBot'",
+    "deploy": "gcloud functions deploy chatBot --gen2 --runtime=nodejs22 --source=. --entry-point=chatBot --trigger-http --allow-unauthenticated --set-env-vars ADMIN='r.navarych@softteco.com;a.silchankau@softteco.com',PARENT='projects/magnetic-nimbus-385019/locations/us-central1',HOST='https://us-central1-magnetic-nimbus-385019.cloudfunctions.net/chatBot'",
     "ngrok": "ngrok http 8080",
     "ngrok:andrei": "ngrok http 8080 --url https://kingfish-literate-poodle.ngrok-free.app",
     "prettier": "prettier --write src/"

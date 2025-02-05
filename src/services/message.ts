@@ -1,5 +1,6 @@
 import { auth, chat, chat_v1 } from "@googleapis/chat";
 import { Message } from "../types/message";
+import { getUser } from "./users";
 
 let client: chat_v1.Chat | undefined;
 
@@ -28,10 +29,14 @@ export async function getSpaces() {
 }
 
 export async function sendMessage({ text, userId }: Message) {
-  const client = await getClient();
+  const [client, user] = await Promise.all([getClient(), getUser(userId)]);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
 
   return await client.spaces.messages.create({
-    parent: process.env.PARENT_MSG,
+    parent: user.space,
     requestBody: {
       text,
       privateMessageViewer: {

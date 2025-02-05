@@ -14,7 +14,6 @@ The application collects daily status reports.
 ```
 HOST=<ngrok proxy url like "https://crayfish-literate-poodle.ngrok-free.app">
 ADMIN=<list of admins separated by ';' like "r.navarych@softteco.com;a.silchankau@softteco.com">
-PARENT_MSG=<get DM space following this instruction: https://developers.google.com/workspace/chat/list-spaces#node.js_1 like "spaces/5HYbHcAAADE">
 PARENT="projects/<your project id like magnetic-nimbus-385019>/locations/<location like us-central1>"
 ```
 - To determine `PARENT_MSG` and `PARENT` you need to setup Google Cloud Application as described below

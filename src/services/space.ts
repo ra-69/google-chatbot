@@ -6,20 +6,21 @@ import { getUser } from "./users";
 export async function handleAddedToSpaceEvent(
   event: AddedToSpaceEvent,
 ): Promise<TextResponse> {
-  if (event.space.type === "DM") {
-    const { user } = event;
-    const ref = getRef("users");
+  const { space, user } = event;
+
+  if (space.type === "DM") {
     const userRecord = await getUser(user.email);
 
-    if (!userRecord) {
-      await ref.doc(user.email).set({
+    await getRef("users")
+      .doc(user.email)
+      .set({
         ...user,
-        timezone: 0,
+        timezone: userRecord?.timezone ?? 0,
+        space: event.space.name,
       });
-    }
 
-    return { text: `Thanks for adding me to a DM, ${event.user.displayName}` };
+    return { text: `Thanks for adding me to a DM, ${user.displayName}` };
   }
 
-  return { text: `Thanks for adding me to ${event.space.displayName} space.` };
+  return { text: `Thanks for adding me to ${space.displayName} space.` };
 }
