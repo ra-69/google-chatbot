@@ -1,21 +1,17 @@
 import { CloudSchedulerClient, protos } from "@google-cloud/scheduler";
-import { CollectReportEvent } from "../types/event";
+import { CollectReportEvent, RecylceSchedulesEvent } from "../types/event";
 import {
   Job,
-  Kind,
-  KindContext,
   Schedule,
-  ScheduleMap,
+  ScheduleContext,
   Time,
-  TimeContext,
-  UsersContext,
-  UsersMap,
+  UsersSchedule,
 } from "../types/schedule";
 import { TextResponse } from "../types/respose";
 import { toUtc } from "../utils/time";
+import { db, getRef } from "./database";
 
 type IJob = protos.google.cloud.scheduler.v1.IJob;
-type IHttpTarget = protos.google.cloud.scheduler.v1.IHttpTarget;
 
 let client: CloudSchedulerClient | undefined;
 
@@ -29,329 +25,163 @@ function getClient() {
 }
 
 export async function scheduleReport(
-  { userIds, start, finish }: Schedule,
+  schedule: Schedule,
   timezone = 0,
 ): Promise<TextResponse> {
-  if (getMinutes(start) >= getMinutes(finish)) {
+  const { userIds } = schedule;
+  const start = getMinutes(toUtc(schedule.start, timezone));
+  const finish = getMinutes(toUtc(schedule.finish, timezone));
+
+  if (start >= finish) {
     return {
       text: "Start time should be greater than finish time.",
     };
   }
 
-  Promise.all([
-    activateSchedule(
-      {
-        userIds,
-        time: start,
-        kind: "start",
-      },
-      timezone,
-    ),
-    activateSchedule(
-      {
-        userIds,
-        time: finish,
-        kind: "finish",
-      },
-      timezone,
-    ),
-  ]);
+  const scheduleId = getScheduleId(start, finish);
+  const batch = db.batch();
+  userIds.forEach((userId) => {
+    batch.set(getRef("userSchedule").doc(userId), {
+      userId,
+      scheduleId,
+    });
+  });
+  await batch.commit();
+
+  const scheduleRec = await getRef("schedules").doc(scheduleId).get();
+  if (!scheduleRec.exists) {
+    await getRef("schedules").doc(scheduleId).set({
+      start,
+      finish,
+      isActivated: false,
+    });
+  }
+
+  await createJob({
+    name: "main",
+    schedule: "* * * * 1-5",
+  });
+
+  await createJob({
+    name: "recycle",
+    schedule: "*/5 * * * 1-5",
+  });
 
   return {
     text: "Schedule is activated.",
   };
 }
 
-async function activateSchedule(
-  {
-    userIds,
-    time,
-    kind,
-  }: {
-    userIds: string[];
-    time: Time;
-    kind: Kind;
-  },
-  timezone: number,
-): Promise<void> {
-  const { minutes, hours } = toUtc(time, timezone);
-  const schedule = `${minutes} ${hours} * * 1-5`;
-  const jobs = await getJobs();
-  const schedules = await getScheduleMap(jobs);
-  const users = await getUsersMap(kind, jobs);
-  const updated = new Set<string>();
-  const created = new Set<string>();
-
-  const scheduleUser = (userId: string) => {
-    if (!schedules[schedule]) {
-      schedules[schedule] = {
-        name: "",
-        userIds: [userId],
-        kind,
-      };
-
-      created.add(schedule);
-    } else {
-      schedules[schedule].userIds.push(userId);
-
-      if (!created.has(schedule)) {
-        updated.add(schedule);
-      }
-    }
-  };
-
-  userIds.forEach((userId) => {
-    const job = users[userId];
-    if (job) {
-      const { time } = job;
-      if (time !== schedule) {
-        const { userIds } = schedules[time];
-        userIds.splice(userIds.indexOf(userId), 1);
-        updated.add(time);
-        scheduleUser(userId);
-      }
-    } else {
-      scheduleUser(userId);
-    }
+async function getJob(name: string) {
+  const client = getClient();
+  const [jobs] = await client.listJobs({
+    parent: process.env.PARENT,
   });
 
-  const client = getClient();
+  return jobs.find((job) => job.name === name);
+}
 
-  if (updated.size > 0) {
-    await Promise.all(
-      [...updated].map((time) => {
-        const { name, userIds, kind } = schedules[time];
-        if (userIds.length === 0) {
-          return client.deleteJob({
-            name,
-          });
-        } else {
-          return client.updateJob({
-            job: {
-              name,
-              schedule: time,
-              httpTarget: getHttpTarget(userIds, kind),
-            },
-          });
+async function createJob(def: Job) {
+  const { name, schedule } = def;
+  const payload: CollectReportEvent | RecylceSchedulesEvent =
+    def.name === "main"
+      ? {
+          type: "COLLECT_REPORTS",
         }
-      }),
-    );
-  }
+      : {
+          type: "RECYCLE_SCHEDULES",
+        };
 
-  if (created.size > 0) {
-    await Promise.all(
-      [...created].map((time) => {
-        const { userIds, kind } = schedules[time];
-        return client.createJob({
-          parent: process.env.PARENT,
-          job: {
-            schedule: time,
-            httpTarget: getHttpTarget(userIds, kind),
-          },
-        });
-      }),
-    );
+  const jobName = `${process.env.PARENT}/jobs/${name}`;
+  const uri = process.env.HOST;
+  const job: IJob = {
+    name: jobName,
+    schedule,
+    httpTarget: {
+      uri,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      httpMethod: "POST",
+      body: Buffer.from(JSON.stringify(payload)).toString("base64"),
+    },
+  };
+
+  const client = getClient();
+  const current = await getJob(jobName);
+
+  if (!current) {
+    await client.createJob({
+      parent: process.env.PARENT,
+      job,
+    });
   }
 }
 
 export async function unscheduleReport(
   userIds: string[],
 ): Promise<TextResponse> {
-  const actions = [
-    deactivateSchedule(userIds, "start"),
-    deactivateSchedule(userIds, "finish"),
-  ];
-
-  await Promise.all(actions);
-  return {
-    text: "Schedules were disabled.",
-  };
-}
-
-async function deactivateSchedule(
-  userIds: string[],
-  kind: Kind,
-): Promise<void> {
-  const scheduleMap = await getScheduleMap();
-  const schedules: (Job & UsersContext & TimeContext)[] = Object.entries(
-    scheduleMap,
-  ).map(([time, job]) => ({ ...job, time }));
-  const updates: (Job & UsersContext & TimeContext)[] = [];
-
+  const batch = db.batch();
   userIds.forEach((userId) => {
-    let update = updates.find(({ userIds }) => userIds.includes(userId));
-
-    if (!update) {
-      const index = schedules.findIndex(
-        ({ userIds, kind: scheduleKind }) =>
-          userIds.includes(userId) && scheduleKind === kind,
-      );
-
-      if (index !== -1) {
-        update = schedules.splice(index, 1)[0];
-        updates.push(update);
-      }
-    }
-
-    if (update) {
-      const { userIds } = update;
-      const index = userIds.indexOf(userId);
-      userIds.splice(index, 1);
-    }
+    batch.delete(getRef("userSchedule").doc(userId));
   });
 
-  if (updates.length === 0) {
-    return;
-  }
+  await batch.commit();
 
-  const client = getClient();
-  const actions = updates.map((update) => {
-    const { userIds, name, time: schedule, kind } = update;
-    if (userIds.length > 0) {
-      return client.updateJob({
-        job: {
-          name,
-          schedule,
-          httpTarget: getHttpTarget(userIds, kind),
-        },
-      });
-    } else {
-      return client.deleteJob({
-        name,
-      });
-    }
-  });
-
-  await Promise.all(actions);
+  return {
+    text: "Schedule is deactivated.",
+  };
 }
 
-export async function getScheduleList(): Promise<TextResponse> {
-  const schedules = await getScheduleMap();
+export async function recycleSchedules(): Promise<TextResponse> {
+  const schedulesRef = getRef("schedules");
+  const schedules = await schedulesRef.get();
 
-  const result = Object.entries(schedules).map(([time, job]) => {
-    const users = job.userIds.map((userId) => `- ${userId}`);
-    return `*${time}*\n${users.join("\n")}`;
+  schedules.forEach(async (doc) => {
+    const users = await getRef("userSchedule")
+      .where("scheduleId", "==", doc.id)
+      .get();
+    if (users.empty) {
+      await schedulesRef.doc(doc.id).delete();
+    }
   });
 
-  return { text: result.join("\n") };
+  return {
+    text: "Unused schedules were recycled.",
+  };
 }
 
-export async function getUsersMap(
-  type: Kind,
-  jobs?: IJob[],
-): Promise<UsersMap> {
-  const result: UsersMap = {};
+export async function getUsersSchedule(): Promise<UsersSchedule> {
+  const result: UsersSchedule = {};
 
-  iterateSchedule(
-    ({ time, name, userIds, kind }) => {
-      if (kind === type) {
-        userIds.forEach((userId) => {
-          result[userId] = {
-            time,
-            name,
-            kind,
-          };
-        });
-      }
-    },
-    jobs ?? (await getJobs()),
-  );
+  const schedule = await getRef("userSchedule").get();
+  schedule.docs.map((doc) => {
+    const { userId, scheduleId } = doc.data();
+    result[userId] = getScheduleContext(scheduleId);
+  });
 
   return result;
 }
 
-function getHttpTarget(userIds: string[], kind: Kind): IHttpTarget {
-  const payload: CollectReportEvent = {
-    type: "COLLECT_REPORTS",
-    userIds,
-    kind,
-  };
+function getScheduleId(start: number, finish: number): string {
+  return `${start}:${finish}`;
+}
 
+function getScheduleContext(scheduleId: string): ScheduleContext {
+  const [start, finish] = scheduleId.split(":");
   return {
-    uri: process.env.HOST,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    httpMethod: "POST",
-    body: Buffer.from(JSON.stringify(payload)).toString("base64"),
+    start: getTime(parseInt(start)),
+    finish: getTime(parseInt(finish)),
   };
 }
 
-async function getScheduleMap(jobs?: IJob[]): Promise<ScheduleMap> {
-  const result: ScheduleMap = {};
-
-  iterateSchedule(
-    ({ time, name, userIds, kind }) => {
-      result[time] = {
-        name,
-        userIds,
-        kind,
-      };
-    },
-    jobs ?? (await getJobs()),
-  );
-
-  return result;
-}
-
-function iterateSchedule(
-  operator: (context: TimeContext & UsersContext & Job) => void,
-  jobs: IJob[],
-) {
-  jobs.forEach((job) => {
-    const timeContext = getTimeContext(job);
-    const usersContext = getUsersContext(job);
-    const { name } = job;
-
-    if (timeContext && usersContext && name) {
-      const { time } = timeContext;
-      const { userIds, kind } = usersContext;
-
-      operator({
-        time,
-        name,
-        userIds,
-        kind,
-      });
-    }
-  });
-}
-
-async function getJobs() {
-  const client = getClient();
-  const [jobs] = await client.listJobs({
-    parent: process.env.PARENT,
-  });
-
-  return jobs;
-}
-
-function getTimeContext(job: IJob): TimeContext | undefined {
-  const { schedule } = job;
-  if (!schedule) {
-    return undefined;
-  }
+function getTime(value: number): Required<Time> {
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
 
   return {
-    time: schedule,
-  };
-}
-
-function getUsersContext(job: IJob): (UsersContext & KindContext) | undefined {
-  const { httpTarget } = job;
-
-  if (!httpTarget) {
-    return undefined;
-  }
-
-  const { body } = httpTarget;
-  const { userIds, kind }: CollectReportEvent = JSON.parse(
-    Buffer.from(body as string, "base64").toString(),
-  );
-
-  return {
-    userIds,
-    kind,
+    hours,
+    minutes,
   };
 }
 

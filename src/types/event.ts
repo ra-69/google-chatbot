@@ -1,12 +1,11 @@
-import { Kind } from "./schedule";
-
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/Event */
 export type ChatEvent =
   | MessageEvent
   | RemovedFromSpaceEvent
   | AddedToSpaceEvent
   | CardClickedEvent
-  | CollectReportEvent;
+  | CollectReportEvent
+  | RecylceSchedulesEvent;
 
 export type EventContext = {
   eventTime: string;
@@ -35,8 +34,10 @@ export type CardClickedEvent = {
 
 export type CollectReportEvent = {
   type: "COLLECT_REPORTS";
-  userIds: string[];
-  kind: Kind;
+};
+
+export type RecylceSchedulesEvent = {
+  type: "RECYCLE_SCHEDULES";
 };
 
 /** https://developers.google.com/workspace/chat/api/reference/rest/v1/User */

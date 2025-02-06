@@ -14,25 +14,17 @@ export function getToDate() {
   return result;
 }
 
-export function getTime(
-  schedule: string | undefined,
-  timezone: number,
-): string {
-  if (!schedule) {
-    return "Unscheduled";
-  }
-
-  const parts = schedule.split(" ");
-  const [minutes, hours] = toLocal(
-    [parseInt(parts[0]), parseInt(parts[1])],
-    timezone,
-  );
+export function getTime(time: Required<Time>, timezone: number): string {
+  const [minutes, hours] = toLocal(time, timezone);
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 }
 
 export function toUtc(time: Time, timezone: number): Time {
   const [minutes, hours] = toLocal(
-    [time.minutes ?? 0, time.hours ?? 0],
+    {
+      hours: time.hours ?? 0,
+      minutes: time.minutes ?? 0,
+    },
     -timezone,
   );
 
@@ -43,7 +35,7 @@ export function toUtc(time: Time, timezone: number): Time {
 }
 
 function toLocal(
-  [minutes, hours]: [number, number],
+  { hours, minutes }: Required<Time>,
   timezone: number,
 ): [number, number] {
   const result = new Date();

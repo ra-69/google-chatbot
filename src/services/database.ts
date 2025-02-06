@@ -1,6 +1,7 @@
 import { CollectionReference, Firestore } from "@google-cloud/firestore";
 import { FlowState, StatusReport } from "../types/flow";
 import { User } from "../types/user";
+import { ScheduleRecord, UserScheduleRecord } from "../types/schedule";
 
 export const db = new Firestore();
 
@@ -8,9 +9,13 @@ type Entity<T extends Collection> = T extends "users"
   ? User
   : T extends "flows"
     ? FlowState
-    : Report;
+    : T extends "reports"
+      ? Report
+      : T extends "schedules"
+        ? ScheduleRecord
+        : UserScheduleRecord;
 
-type Collection = "users" | "flows" | "reports";
+type Collection = "users" | "flows" | "reports" | "schedules" | "userSchedule";
 
 type Report = StatusReport & {
   userId: string;

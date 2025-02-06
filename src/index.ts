@@ -5,7 +5,8 @@ import { ChatResponse } from "./types/respose";
 import { handleAddedToSpaceEvent } from "./services/space";
 import { handleCommand } from "./services/command";
 import { handleAction } from "./services/action";
-import { collectReports, finalizeReports } from "./services/report";
+import { handleReports } from "./services/report";
+import { recycleSchedules } from "./services/scheduler";
 
 export async function chatBot(req: Request, res: Response) {
   const event = req.body as ChatEvent;
@@ -21,11 +22,10 @@ export async function chatBot(req: Request, res: Response) {
       resp = await handleAction(event);
       return res.json(resp);
     case "COLLECT_REPORTS":
-      if (event.kind === "start") {
-        await collectReports(event.userIds);
-      } else {
-        await finalizeReports(event.userIds);
-      }
+      resp = await handleReports();
+      return res.json(resp);
+    case "RECYCLE_SCHEDULES":
+      resp = await recycleSchedules();
       return res.json(resp);
     default:
       return res.json(resp);

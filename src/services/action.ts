@@ -8,7 +8,7 @@ import {
   getSchedule,
   getTimezone,
 } from "./prompt";
-import { collectReports } from "./report";
+import { handleReports } from "./report";
 import { scheduleReport, unscheduleReport } from "./scheduler";
 import { setTimezone } from "./timezone";
 import { getUser } from "./users";
@@ -18,7 +18,7 @@ export async function handleAction(
 ): Promise<TextResponse> {
   switch (event.action.actionMethodName) {
     case "getStatus":
-      return await runAction(event, getAudience, collectReports);
+      return await runAction(event, getAudience, handleReports);
     case "getReport":
       return await runAction(event, getReportFilter, getStatusReport);
     case "activateSchedule":

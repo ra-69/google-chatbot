@@ -1,10 +1,10 @@
 import { User } from "../types/event";
 import { User as UserRecord } from "../types/user";
 import { CardsResponse, DecoratedText, Widget } from "../types/respose";
-import { UsersMap } from "../types/schedule";
+import { UsersSchedule } from "../types/schedule";
 import { getTime } from "../utils/time";
 import { getRef } from "./database";
-import { getUsersMap as getUsersJobMap } from "./scheduler";
+import { getUsersSchedule as getUsersJobMap } from "./scheduler";
 
 export async function listTeam(timezone: number): Promise<CardsResponse> {
   const widgets = await mapUsers(getUserWidget, timezone);
@@ -40,12 +40,12 @@ export async function getUsersMap() {
 }
 
 export async function mapUsers(
-  operator: (user: User, schedules: UsersMap, timezone: number) => Widget,
+  operator: (user: User, schedules: UsersSchedule, timezone: number) => Widget,
   timezone = 0,
 ): Promise<Widget[]> {
   const [users, schedules] = await Promise.all([
     getRef("users").get(),
-    getUsersJobMap("start"),
+    getUsersJobMap(),
   ]);
 
   const widgets = users.docs.map((doc): Widget => {
@@ -58,11 +58,15 @@ export async function mapUsers(
 
 export function getUserWidget(
   user: User,
-  schedules: UsersMap,
+  schedules: UsersSchedule,
   timezone = 0,
 ): { decoratedText: DecoratedText } {
   const { displayName, email, avatarUrl } = user;
   const schedule = schedules[email];
+
+  const bottomLabel = schedule
+    ? `${getTime(schedule.start, timezone)}-${getTime(schedule.finish, timezone)}`
+    : "Unscheduled";
 
   return {
     decoratedText: {
@@ -72,7 +76,7 @@ export function getUserWidget(
       },
       topLabel: email,
       text: displayName,
-      bottomLabel: getTime(schedule?.time, timezone),
+      bottomLabel,
     },
   };
 }
