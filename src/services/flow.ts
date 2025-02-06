@@ -38,6 +38,7 @@ export async function finishFlow(
   const current = (await getRef("flows").doc(userId).get()).data();
 
   if (current) {
+    await getRef("flows").doc(userId).delete();
     sendMessage({ text: message, userId });
     const { activeFlow: flow, createdAt } = current;
 
