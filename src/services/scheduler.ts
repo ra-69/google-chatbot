@@ -57,15 +57,17 @@ export async function scheduleReport(
     });
   }
 
-  await createJob({
-    name: "main",
-    schedule: "* * * * 1-5",
-  });
+  if (process.env.MANAGE_JOBS === "true") {
+    await createJob({
+      name: "main",
+      schedule: "* * * * 1-5",
+    });
 
-  await createJob({
-    name: "recycle",
-    schedule: "*/5 * * * 1-5",
-  });
+    await createJob({
+      name: "recycle",
+      schedule: "*/5 * * * 1-5",
+    });
+  }
 
   return {
     text: "Schedule is activated.",
