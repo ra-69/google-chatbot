@@ -85,7 +85,7 @@ Communication with chat bot is performed by slush commands. Some of slush comman
 - `/unschedule` Cancel report scheduling.
 
 ### Report Collection
-The process of reports collection looks like as a natural dialog and consists of several sequential steps. When status report is activated chat bot sends questions like `What did you accomplished yesterday?` to particular fellow and waits for reply. After report is completed chat bot confirms it with the message `Thank you have a wonderful day!`. A collected report is sent to all admins in realtime and becomes available to review.
+The process of reports collection looks like as a natural dialog and consists of several sequential steps. When status report is activated chat bot sends questions like `What did you accomplish yesterday?` to particular fellow and waits for reply. After report is completed chat bot confirms it with the message `Thank you have a wonderful day!`. A collected report is sent to all admins in realtime and becomes available to review.
 
 
 
