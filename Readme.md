@@ -69,10 +69,10 @@ Administrators can determine status report discipline and receive reports in rea
 Administrators are configured by application environment variables setup.
 
 ### Activation Process
-To activate daily report bot click to `New chat` button in the Google Chat application and choose `DailyReportBot` in the App list.
+To activate daily report bot, click to `New chat` button in the Google Chat application and choose `DailyReportBot` in the App list.
 
 ### Commands
-Communication with chat bot is performed by slush commands. Some of slush commands are available only for administrators. To see the whole command list enter `/` symbol in the chat bot prompt.
+Communication with chat bot is performed by slush commands. Some of slush commands are available only for administrators. To see the complete command list enter `/` symbol in the chat bot prompt.
 
 #### General Commands
 - `/team` Shows each fellow's name, email and shedule time.
