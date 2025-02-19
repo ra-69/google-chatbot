@@ -55,3 +55,37 @@ For development needs use your `ngrok` domain as an Http endpoint URL and App Ho
 - Getting started with Google Cloud Platform [Firestore](https://cloud.google.com/firestore/docs/create-database-server-client-library)
 - How to run [emulator](https://cloud.google.com/firestore/docs/emulator)
 - Setup default [credentials](https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment)
+
+## User Guide
+Daily report bot is designed to maintain regular status report collection. It might serve as an augmentation or replacement of traditional daily standap Agile ceremony or to represent some part of other status monitoring process.
+
+### User Roles
+There are two kinds of users:
+- Administartors
+- Fellows
+
+Administrators can determine status report discipline and receive reports in realtime. Fellows are persons who provide reports and might review reports from others.
+
+Administrators are configured by application environment variables setup.
+
+### Activation Process
+To activate daily report bot click to `New chat` button in the Google Chat application and choose `DailyReportBot` in the App list.
+
+### Commands
+Communication with chat bot is performed by slush commands. Some of slush commands are available only for administrators. To see the whole command list enter `/` symbol in the chat bot prompt.
+
+#### General Commands
+- `/team` Shows each fellow's name, email and shedule time.
+- `/report` Retrieves reports by fellow names and time period.
+- `/timezone` Setup personal timezone to display all time related information in accordance with it.
+
+#### Administation Commands
+- `/status` Sends report requests to selected fellows.
+- `/schedule` Schedule report to particular group of fellows in dedicated time interval. If schedule is specified it means that each day at particular time report collection would be activated. If schedule time is elapsed but fellow has not completed report yet, current report status is sent to adminstrators, fellow receives notification that report time is elapsed and cannot continue reporting.
+- `/unschedule` Cancel report scheduling.
+
+### Report Collection
+The process of reports collection looks like as a natural dialog and consists of several sequential steps. When status report is activated chat bot sends questions like `What did you accomplished yesterday?` to particular fellow and waits for reply. After report is completed chat bot confirms it with the message `Thank you have a wonderful day!`. A collected report is sent to all admins in realtime and becomes available to review.
+
+
+
