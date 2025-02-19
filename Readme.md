@@ -57,7 +57,7 @@ For development needs use your `ngrok` domain as an Http endpoint URL and App Ho
 - Setup default [credentials](https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment)
 
 ## User Guide
-Daily report bot is designed to maintain regular status report collection. It might serve as an augmentation or replacement of traditional daily standap Agile ceremony or to represent some part of other status monitoring process.
+Daily report bot is designed to maintain regular status report collection. It might serve as an augmentation or replacement of traditional daily standup Agile ceremony or to represent some part of other status monitoring process.
 
 ### User Roles
 There are two kinds of users:
